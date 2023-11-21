@@ -1,0 +1,271 @@
+# Farran Haley 20251874
+# John Walsh 20245424
+# Carlos Cruz 20275455
+# Executes to the end without error
+# **Imports**
+# Imports
+import keras
+import tensorflow
+import seaborn as sb
+# Imports the mnist dataset
+from keras.datasets import fashion_mnist
+from keras.utils import to_categorical
+from keras import models, layers
+from keras.layers import Conv2D, Dense, MaxPool2D, Dropout, Flatten
+from sklearn.model_selection import KFold
+import numpy as np
+from matplotlib import pyplot as plt
+# **Pre-Processing**
+# **Pre-Processing**
+
+# Number of K-Folds
+num_folds=3
+
+# Loads the below variables with the dataset
+(x_train_images, y_train_labels), (x_test_images, y_test_labels) = fashion_mnist.load_data()
+
+# Uses reshape to change the shape of the array while keeping the data the same
+# Uses astype to create a copy of the array, cast to a specified type
+x_train_images = x_train_images.reshape((x_train_images.shape[0], 28, 28, 1))
+x_test_images = x_test_images.reshape((x_test_images.shape[0], 28, 28, 1))
+
+# Converts to floats and normalises to range 0-1
+x_train_images = x_train_images.astype('float32')/255
+x_test_images - x_test_images.astype('float32')/255
+
+# Per-fold score containers
+acc_per_fold = []
+loss_per_fold = []
+
+# Merge inputs and targets
+inputs = np.concatenate((x_train_images, x_test_images), axis=0)
+targets = np.concatenate((y_train_labels, y_test_labels), axis=0)
+
+# Define the KFold Cross Validator
+kfold = KFold(n_splits=num_folds, shuffle=True)
+
+# One-hot encoding
+y_train_labels = to_categorical(y_train_labels)
+y_test_labels = to_categorical(y_test_labels)
+# **Building the LeNet-5 Model**
+#LeNet5
+model = models.Sequential()
+model.add(Conv2D(6, kernel_size=(5, 5), padding= 'same',
+                 activation='tanh', input_shape=(28, 28, 1)))
+model.add(MaxPool2D(pool_size=(2,2), strides=2))
+
+model.add(Conv2D(16, kernel_size=(5, 5),
+                 padding='valid', activation='tanh'))
+model.add(MaxPool2D(pool_size=(2,2), strides=2))
+
+model.add(Flatten())
+model.add(Dense(120, activation='tanh'))
+model.add(Dense(84, activation='tanh'))
+model.add(Dense(10, activation='softmax'))
+
+model.summary()
+model.compile(optimizer= 'rmsprop', loss= 'categorical_crossentropy', metrics=['accuracy'])
+for i in range(9):
+    plt.subplot(330 + 1 + i)
+    plt.imshow(x_train_images[i].reshape(28, 28), cmap=plt.get_cmap('gray'))
+plt.show()
+# Trains the model on the training images and labels
+model.fit(x_train_images, y_train_labels, epochs= 5, batch_size= 64)
+# Summarize history for accuracy
+plt.plot(model.history.history['accuracy'])
+#plt.plot(model.history.history['val_accuracy'])
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+
+# Summarize history for loss
+plt.plot(model.history.history['loss'])
+#plt.plot(model.history.history['val_loss'])
+plt.title('Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Validation'], loc='upper left')
+plt.show()
+# Evaluates models performance when presented with new data using the test images and labels
+model.evaluate(x_test_images, y_test_labels)
+# **Building the Visual Geometry Group (VGG) model**
+# **Imports needed specifically for the VGG model**
+from keras.layers import Input, Conv2D, MaxPooling2D, Flatten, Dense
+from keras.models import Model
+
+
+# **Building the Visual Geometry Group (VGG) model**
+
+# Adjust the input shape to match the 28x28 images of Fashion MNIST
+_input = Input((28, 28, 1))
+
+# Keep the VGG structure but adapt the filter sizes and the number of layers as needed
+conv1 = Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu")(_input)
+conv2 = Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu")(conv1)
+pool1 = MaxPooling2D((2, 2))(conv2)
+
+conv3 = Conv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu")(pool1)
+conv4 = Conv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu")(conv3)
+pool2 = MaxPooling2D((2, 2))(conv4)
+
+# Flatten the output and add dense layers
+flat = Flatten()(pool2)
+dense1 = Dense(256, activation="relu")(flat)
+dense2 = Dense(256, activation="relu")(dense1)
+
+# Change the number of output classes to 10 for Fashion MNIST
+output = Dense(10, activation="softmax")(dense2)
+
+# Create the model
+vgg_like_model = Model(inputs=_input, outputs=output)
+
+# Compile the model with the appropriate loss function for categorical classification
+vgg_like_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# Print the model summary to check the final architecture
+vgg_like_model.summary()
+
+# Correct the preprocessing for the test images
+x_test_images = x_test_images.reshape((x_test_images.shape[0], 28, 28, 1))
+x_test_images = x_test_images.astype('float32') / 255
+
+# Now, you can train the VGG-like model with Fashion MNIST data
+history = vgg_like_model.fit(
+    x_train_images,
+    y_train_labels,
+    epochs=5,
+    batch_size=64,
+    validation_data=(x_test_images, y_test_labels)
+)
+
+# Evaluate the model's performance on the test set
+vgg_like_model.evaluate(x_test_images, y_test_labels)
+
+# Plotting training & validation accuracy values
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['accuracy'])
+#plt.plot(history.history['val_accuracy'])
+plt.title('Model Accuracy')
+plt.ylabel('Accuracy')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+
+# Plotting training & validation loss values
+plt.subplot(1, 2, 2)
+plt.plot(history.history['loss'])
+#plt.plot(history.history['val_loss'])
+plt.title('Model Loss')
+plt.ylabel('Loss')
+plt.xlabel('Epoch')
+plt.legend(['Train', 'Test'], loc='upper left')
+
+plt.show()
+# K-fold cross validation **LeNet**
+fold_no = 1
+for train, test in kfold.split(x_train_images, y_train_labels):
+
+  model = models.Sequential()
+  model.add(Conv2D(6, kernel_size=(5, 5), padding= 'same',
+                  activation='tanh', input_shape=(28, 28, 1)))
+  model.add(MaxPool2D(pool_size=(2,2), strides=2))
+
+  model.add(Conv2D(16, kernel_size=(5, 5),
+                  padding='valid', activation='tanh'))
+  model.add(MaxPool2D(pool_size=(2,2), strides=2))
+
+  model.add(Flatten())
+  model.add(Dense(120, activation='tanh'))
+  model.add(Dense(84, activation='tanh'))
+  model.add(Dense(10, activation='softmax'))
+
+  # Compiling model and defining hyperparams
+  model.compile(optimizer= 'rmsprop',
+                loss= 'categorical_crossentropy',
+                metrics=['accuracy'])
+
+  # Generate a print
+  print('------------------------------------------------------------------------')
+  print(f'Training for fold {fold_no} ...')
+
+  # Training Model
+  history = model.fit(x_train_images,
+                      y_train_labels,
+                      epochs=5,
+                      batch_size=64)
+
+  # Generate generalization metrics
+  scores = model.evaluate(x_train_images[test], y_train_labels[test])
+  print(f'Score for fold {fold_no}: {model.metrics_names[0]} of {scores[0]}; {model.metrics_names[1]} of {scores[1]*100}%')
+  acc_per_fold.append(scores[1] * 100)
+  loss_per_fold.append(scores[0])
+
+  # Increase fold number
+  fold_no = fold_no + 1
+
+# Provide average scores
+print('------------------------------------------------------------------------')
+print('Score per fold')
+for i in range(0, len(acc_per_fold)):
+  print('------------------------------------------------------------------------')
+  print(f'> Fold {i+1} - Loss: {loss_per_fold[i]} - Accuracy: {acc_per_fold[i]}%')
+print('------------------------------------------------------------------------')
+print('Average scores for all folds:')
+print(f'> Accuracy: {np.mean(acc_per_fold)} (+- {np.std(acc_per_fold)})')
+print(f'> Loss: {np.mean(loss_per_fold)}')
+print('------------------------------------------------------------------------')
+# K-fold cross-validation **VGG**
+from sklearn.model_selection import KFold
+
+# Number of folds for K-fold Cross-validation
+num_folds = 5
+kfold = KFold(n_splits=num_folds, shuffle=True)
+
+fold_no = 1
+acc_per_fold = []
+loss_per_fold = []
+
+for train, test in kfold.split(x_train_images, y_train_labels):
+    _input = Input((28, 28, 1))
+
+    # Start of the VGG-like model definition
+    conv1 = Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu")(_input)
+    conv2 = Conv2D(filters=64, kernel_size=(3, 3), padding="same", activation="relu")(conv1)
+    pool1 = MaxPooling2D((2, 2))(conv2)
+
+    conv3 = Conv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu")(pool1)
+    conv4 = Conv2D(filters=128, kernel_size=(3, 3), padding="same", activation="relu")(conv3)
+    pool2 = MaxPooling2D((2, 2))(conv4)
+
+    flat = Flatten()(pool2)
+    dense1 = Dense(256, activation="relu")(flat)
+    dense2 = Dense(256, activation="relu")(dense1)
+    output = Dense(10, activation="softmax")(dense2)
+
+    # End of the VGG-like model definition
+    vgg_like_model = Model(inputs=_input, outputs=output)
+
+    # Compile the model
+    vgg_like_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+    # Generate a print
+    print('------------------------------------------------------------------------')
+    print(f'Training for fold {fold_no} ...')
+
+    # Fit data to model
+    history = vgg_like_model.fit(x_train_images[train], y_train_labels[train],
+                                 epochs=5,
+                                 batch_size=64,
+                                 verbose=1)
+
+    # Generate generalization metrics
+    scores = vgg_like_model.evaluate(x_train_images[test], y_train_labels[test], verbose=0)
+    print(
+        f'Score for fold {fold_no}: {vgg_like_model.metrics_names[0]} of {scores[0]}; {vgg_like_model.metrics_names[1]} of {scores[1] * 100}%')
+    acc_per_fold.append(scores[1] * 100)
+    loss_per_fold.append(scores[0])
+
+    # Increase fold number
+    fold_no = fold_no + 1
